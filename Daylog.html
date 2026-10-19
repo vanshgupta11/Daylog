@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Daylog — Habit & Skill Tracker</title>
+  <meta name="description" content="Vercel-inspired habit tracker featuring per-habit GitHub heatmaps, Obsidian graph view, and challenge goals.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="daylog.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="side" id="side" aria-label="Habits"></aside>
+    <main class="main">
+      <header class="top" id="top"></header>
+      <div class="content" id="content"></div>
+    </main>
+  </div>
+  <div class="scrim" id="scrim" hidden></div>
+  <div id="tip" hidden></div>
+  <div id="pop" hidden></div>
+  <div class="mback" id="modal" hidden></div>
+  <div id="toast" hidden></div>
+
+  <script src="daylog.js"></script>
+</body>
+</html>
