@@ -5,7 +5,7 @@
   "description": "Daylog — Habit & Skill Tracker with Auth backend",
   "scripts": {
     "start": "node server/index.js",
-    "build": "npm --prefix client install && npm --prefix client run build && npm --prefix server install",
+    "build": "npm --prefix client install --include=dev && npm --prefix client run build && npm --prefix server install",
     "server": "cd server && npm run dev",
     "client": "cd client && npm run dev",
     "install:all": "npm --prefix server install && npm --prefix client install",
