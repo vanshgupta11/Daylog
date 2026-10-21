@@ -1,8 +1,8 @@
 import { useAuth } from '../context/AuthContext';
-import AuthBar from './AuthBar';
+import ProfileButton from './ProfileButton';
 
 /**
- * Dashboard: shows the AuthBar + embeds the Daylog tracker in an iframe.
+ * Dashboard: shows the floating ProfileButton + embeds the Daylog tracker in a full-height iframe.
  * The tracker runs at /tracker (served by Express from the public/ folder).
  */
 export default function Dashboard() {
@@ -13,7 +13,7 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      <AuthBar />
+      <ProfileButton />
       <iframe
         className="tracker-frame"
         src={trackerUrl}

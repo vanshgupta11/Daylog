@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="daylog-bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151426"/>
+      <stop offset="1" stop-color="#0a0a12"/>
+    </linearGradient>
+    <linearGradient id="cell-vibrant" x1="4.5" y1="4.5" x2="14.5" y2="14.5" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9d8dfc"/>
+      <stop offset="1" stop-color="#7c6cff"/>
+    </linearGradient>
+    <linearGradient id="cell-accent" x1="17.5" y1="17.5" x2="27.5" y2="27.5" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c4b8ff"/>
+      <stop offset="1" stop-color="#8b7aff"/>
+    </linearGradient>
+  </defs>
+  <!-- Background squircle -->
+  <rect width="32" height="32" rx="7.5" fill="url(#daylog-bg)"/>
+  <rect width="31" height="31" x="0.5" y="0.5" rx="7" stroke="#7c6cff" stroke-opacity="0.3" stroke-width="1"/>
+  <!-- Daylog 2x2 Habit Tracker Grid -->
+  <rect x="4.5" y="4.5" width="10" height="10" rx="2.5" fill="url(#cell-vibrant)"/>
+  <rect x="17.5" y="4.5" width="10" height="10" rx="2.5" fill="#7c6cff" fill-opacity="0.6"/>
+  <rect x="4.5" y="17.5" width="10" height="10" rx="2.5" fill="#7c6cff" fill-opacity="0.3"/>
+  <rect x="17.5" y="17.5" width="10" height="10" rx="2.5" fill="url(#cell-accent)"/>
+</svg>

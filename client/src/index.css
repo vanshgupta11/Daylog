@@ -209,64 +209,220 @@ body {
 
 /* ── Dashboard / tracker wrapper ───────────────────── */
 .dashboard {
+  position: relative;
+  width: 100vw;
   height: 100vh;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
-}
-
-/* Top auth bar */
-.auth-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  height: 48px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  z-index: 10;
-}
-.auth-bar-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-.auth-bar-avatar {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), #a78bfa);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: #fff;
-  flex-shrink: 0;
-}
-.auth-bar-name { font-weight: 600; font-size: 13px; }
-.auth-bar-email { font-size: 12px; color: var(--fg3); }
-
-.auth-bar-logout {
-  padding: 6px 14px;
-  background: transparent;
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  color: var(--fg2);
-  font-family: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color .2s, color .2s, background .2s;
-}
-.auth-bar-logout:hover {
-  border-color: var(--danger);
-  color: var(--danger);
-  background: rgba(255,92,92,.06);
 }
 
 /* Tracker iframe fills remaining height */
 .tracker-frame {
-  flex: 1;
-  border: none;
   width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
 }
+
+/* ── Floating Profile Button & Popover ─────────────── */
+.profile-btn-container {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 1000;
+}
+
+/* Transparent backdrop to catch clicks outside over the iframe */
+.profile-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  cursor: default;
+}
+
+/* Trigger button matching Daylog header buttons */
+.profile-trigger-btn {
+  position: relative;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px 0 4px;
+  background: rgba(17, 17, 24, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  transition: all 0.16s ease;
+}
+
+.profile-trigger-btn:hover,
+.profile-trigger-btn.active {
+  background: rgba(26, 26, 38, 0.98);
+  border-color: rgba(124, 108, 255, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(124, 108, 255, 0.3);
+}
+
+.profile-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.profile-avatar.large {
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
+  box-shadow: 0 4px 16px rgba(124, 108, 255, 0.4);
+}
+
+.profile-trigger-name {
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg);
+}
+
+.profile-chevron {
+  color: var(--fg3);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.profile-trigger-btn:hover .profile-chevron,
+.profile-trigger-btn.active .profile-chevron {
+  color: var(--fg);
+}
+
+.profile-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* Popover Dropdown Card */
+.profile-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
+  width: 260px;
+  background: rgba(17, 17, 24, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: popoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.profile-popover-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-user-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-user-email {
+  font-size: 12px;
+  color: var(--fg3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.profile-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px 8px;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--success);
+  font-weight: 500;
+}
+
+.profile-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.profile-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+.profile-logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg2);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-logout-btn:hover {
+  background: rgba(255, 92, 92, 0.1);
+  border-color: rgba(255, 92, 92, 0.4);
+  color: var(--danger);
+}
+
 
 /* ── Full-page loader ───────────────────────────────── */
 .page-loader {
