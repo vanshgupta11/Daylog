@@ -26,6 +26,31 @@
   var lastKey = '';
   var chartInstances = [];
 
+  /* ---------- theme ---------- */
+  var LS_THEME = 'daylog.theme';
+  function resolvedTheme() {
+    var stored = localStorage.getItem(LS_THEME);
+    if (stored === 'dark' || stored === 'light') return stored;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    var btn = document.getElementById('theme-toggle');
+    if (btn) btn.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
+  }
+  function toggleTheme() {
+    var next = resolvedTheme() === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(LS_THEME, next);
+    applyTheme(next);
+  }
+  function initTheme() {
+    applyTheme(resolvedTheme());
+    // Keep in sync if OS preference changes and user has no manual override
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+      if (!localStorage.getItem(LS_THEME)) applyTheme(resolvedTheme());
+    });
+  }
+
   function rng(seed) {
     return function () {
       seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -283,7 +308,16 @@
       + '<button class="nav' + (view.kind === 'analytics' ? ' on' : '') + '" data-act="nav" data-v="analytics"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="9" width="3" height="5" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg>Analytics</button>'
       + '<div class="sect"><span>Habits &amp; skills</span><button class="ib" data-act="new" aria-label="New habit" title="New habit">+</button></div>'
       + '<div class="tree">' + (Object.keys(S.habits).length ? treeRows(null, 0) : '<p class="muted" style="padding:4px 8px;font-size:13px">No habits yet.</p>') + '</div>'
-      + '<div class="foot" id="sync" data-s="' + syncState + '"><i></i><span></span></div>';
+      + '<div class="foot" id="sync" data-s="' + syncState + '"><i></i><span></span></div>'
+      + '<div class="profile">'
+      + '<div class="profile-avatar" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="5.5" r="2.5"/><path d="M2.5 13.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg></div>'
+      + '<div class="profile-info"><div class="pi-name">You</div><div class="pi-sub">Local account</div></div>'
+      + '<button id="theme-toggle" class="theme-toggle" data-act="theme" aria-label="Toggle theme" title="Toggle light / dark" aria-pressed="' + (resolvedTheme() === 'dark' ? 'true' : 'false') + '">'
+      + '<span class="tt-track">'
+      + '<span class="tt-sun"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M11.4 4.6l-1.4 1.4M4.6 11.4l-1.4 1.4"/></svg></span>'
+      + '<span class="tt-moon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M13.5 10A5.5 5.5 0 0 1 6 2.5 6 6 0 1 0 13.5 10z"/></svg></span>'
+      + '</span><span class="tt-thumb"></span></button>'
+      + '</div>';
     setSync(syncState);
   }
   function renderTop() {
@@ -854,6 +888,7 @@
       case 'addc': closeSide(); openForm(null, id); break;
       case 'edit': openForm(id); break;
       case 'menu': openSide(); break;
+      case 'theme': toggleTheme(); break;
       case 'tgl': toggleToday(id); break;
       case 'stp': { var h = S.habits[id]; setAmount(id, TODAY, amount(id, TODAY) + Number(el.getAttribute('data-delta')) * stepOf(h.goal)); break; }
       case 'pset': { var v = $('#pop-amt').value; closePop(); setAmount(id, Number(el.getAttribute('data-d')), v); break; }
@@ -901,6 +936,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && todayNum() !== TODAY) render(); });
 
   /* ---------- boot ---------- */
+  initTheme();
   S = loadLocal() || sampleState();
   reindex();
   render();
