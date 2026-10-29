@@ -146,6 +146,13 @@
     return { cur: cur, best: best, total: total, l30: l30 };
   }
   function activeDays(id, n) { var c = 0; for (var x = TODAY - n + 1; x <= TODAY; x++) if (dayDone(id, x)) c++; return c; }
+  function totalUnits(id) {
+    // For a leaf habit: sum all logged values. For a group: sum across leaf habits.
+    var ids = isGroup(id) ? leaves(id) : [id];
+    var sum = 0;
+    ids.forEach(function (lid) { var l = S.log[lid] || {}; Object.keys(l).forEach(function (d) { sum += l[d] || 0; }); });
+    return Math.round(sum * 100) / 100;
+  }
   function stepOf(g) { return g <= 10 ? 1 : g <= 60 ? 5 : g <= 200 ? 10 : g <= 2000 ? 100 : 500; }
 
   /* ---------- persistence ---------- */
@@ -342,11 +349,16 @@
   }
   function statTiles(id) {
     var st = stats(id), g = isGroup(id);
+    var tu = totalUnits(id);
+    var showUnits = !g && S.habits[id] && (S.habits[id].goal > 1 || S.habits[id].unit);
+    var unitLabel = showUnits && S.habits[id].unit ? S.habits[id].unit : 'units';
     return '<div class="card tiles">'
       + '<div class="tile"><span class="lbl">' + (g ? 'Active streak' : 'Current streak') + '</span><b>' + st.cur + '<small> d</small></b></div>'
       + '<div class="tile"><span class="lbl">Longest</span><b>' + st.best + '<small> d</small></b></div>'
       + '<div class="tile"><span class="lbl">Days ' + (g ? 'active' : 'done') + '</span><b>' + st.total + '</b></div>'
-      + '<div class="tile"><span class="lbl">Last 30 days</span><b>' + Math.round(st.l30 / 30 * 100) + '<small>%</small></b></div></div>';
+      + '<div class="tile"><span class="lbl">Last 30 days</span><b>' + Math.round(st.l30 / 30 * 100) + '<small>%</small></b></div>'
+      + (showUnits ? '<div class="tile"><span class="lbl">Total ' + esc(unitLabel) + '</span><b>' + fmt(tu) + '</b></div>' : '')
+      + '</div>';
   }
   function heatCard(id, title, color) {
     var n = activeDays(id, 365);
@@ -358,11 +370,15 @@
     var right;
     if (g) { var ls = leaves(id), n = 0; ls.forEach(function (l) { if (amount(l, TODAY) >= S.habits[l].goal) n++; }); right = '<span class="mono" style="font-size:12px;color:var(--fg2)">' + n + '/' + ls.length + ' today</span>'; }
     else right = ctrl(id);
+    var tu = totalUnits(id);
+    var showTU = !g && (h.goal > 1 || h.unit);
+    var tuLabel = showTU && h.unit ? fmt(tu) + ' ' + esc(h.unit) : (showTU ? fmt(tu) + ' total' : '');
+    var tuHtml = showTU ? '<span title="Total units logged">' + tuLabel + '</span>' : '';
     return '<article class="hc" data-act="sel" data-id="' + id + '" tabindex="0" role="button" aria-label="Open ' + esc(h.name) + '">'
       + '<div class="hd"><div class="nm"><i class="dot" style="--c:' + c + '"></i><span>' + esc(h.name) + '</span></div>' + right + '</div>'
       + (p ? '<div class="pth">' + esc(p) + '</div>' : '')
       + heat(id, { weeks: 26, cell: 9, gap: 2, aria: h.name + ' heatmap' })
-      + '<div class="ft"><span>' + (g ? 'Active streak ' : 'Streak ') + st.cur + 'd</span><span>' + Math.round(st.l30 / 30 * 100) + '% · 30d</span></div></article>';
+      + '<div class="ft"><span>' + (g ? 'Active streak ' : 'Streak ') + st.cur + 'd</span>' + tuHtml + '<span>' + Math.round(st.l30 / 30 * 100) + '% · 30d</span></div></article>';
   }
   function viewOverview() {
     var ids = Object.keys(S.habits);
@@ -804,7 +820,10 @@
     var h = S.habits[id], st = stats(id), g = isGroup(id);
     var p = pathOf(id).map(function (x) { return x.name; }).join(' / ');
     var today = g ? (Math.round(ratio(id, TODAY) * 100) + '% today') : (amount(id, TODAY) >= h.goal ? 'Done today' : 'Not done today');
-    el.innerHTML = '<div class="nm"><i class="dot" style="--c:var(--hab' + h.hue + ')"></i>' + esc(h.name) + '</div>' + (p ? '<div class="pth">' + esc(p) + '</div>' : '') + '<div class="st">' + today + ' · streak ' + st.cur + 'd</div><div class="row2"><button class="btn sm pri" data-act="sel" data-id="' + id + '">Open</button>' + (g ? '' : '<button class="btn sm" data-act="tgl" data-id="' + id + '">' + (amount(id, TODAY) >= h.goal ? 'Undo today' : 'Mark today') + '</button>') + '</div>';
+    var tu = totalUnits(id);
+    var showTU = !g && (h.goal > 1 || h.unit);
+    var tuStr = showTU ? ('<div class="st" style="font-size:12px">Total: ' + fmt(tu) + (h.unit ? ' ' + esc(h.unit) : ' units') + '</div>') : '';
+    el.innerHTML = '<div class="nm"><i class="dot" style="--c:var(--hab' + h.hue + ')"></i>' + esc(h.name) + '</div>' + (p ? '<div class="pth">' + esc(p) + '</div>' : '') + '<div class="st">' + today + ' · streak ' + st.cur + 'd</div>' + tuStr + '<div class="row2"><button class="btn sm pri" data-act="sel" data-id="' + id + '">Open</button>' + (g ? '' : '<button class="btn sm" data-act="tgl" data-id="' + id + '">' + (amount(id, TODAY) >= h.goal ? 'Undo today' : 'Mark today') + '</button>') + '</div>';
     el.hidden = false;
   }
   function gInit() {
