@@ -24,6 +24,7 @@
   var S = null, CH = {}, LV = {};
   var view = { kind: 'overview', id: null };
   var lastKey = '';
+  var chartInstances = [];
 
   function rng(seed) {
     return function () {
@@ -279,6 +280,7 @@
     $('#side').innerHTML = '<div class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="9" height="9" rx="2" fill="var(--fg)"/><rect x="12" y="1" width="9" height="9" rx="2" fill="var(--fg)" opacity=".45"/><rect x="1" y="12" width="9" height="9" rx="2" fill="var(--fg)" opacity=".2"/><rect x="12" y="12" width="9" height="9" rx="2" fill="var(--fg)" opacity=".75"/></svg>Daylog</div>'
       + '<button class="nav' + (view.kind === 'overview' ? ' on' : '') + '" data-act="nav" data-v="overview"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>Overview</button>'
       + '<button class="nav' + (view.kind === 'graph' ? ' on' : '') + '" data-act="nav" data-v="graph"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="7" cy="12" r="2"/><path d="M5.6 5l4.7.3M5 5.8l1.5 4.4M10.8 6.7L8.2 10.4"/></svg>Graph</button>'
+      + '<button class="nav' + (view.kind === 'analytics' ? ' on' : '') + '" data-act="nav" data-v="analytics"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="9" width="3" height="5" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg>Analytics</button>'
       + '<div class="sect"><span>Habits &amp; skills</span><button class="ib" data-act="new" aria-label="New habit" title="New habit">+</button></div>'
       + '<div class="tree">' + (Object.keys(S.habits).length ? treeRows(null, 0) : '<p class="muted" style="padding:4px 8px;font-size:13px">No habits yet.</p>') + '</div>'
       + '<div class="foot" id="sync" data-s="' + syncState + '"><i></i><span></span></div>';
@@ -288,6 +290,7 @@
     var t = '';
     if (view.kind === 'overview') t = '<span class="cur">Overview</span>';
     else if (view.kind === 'graph') t = '<span class="cur">Graph</span>';
+    else if (view.kind === 'analytics') t = '<span class="cur">Analytics</span>';
     else {
       var p = pathOf(view.id);
       t = p.map(function (x) { return '<button data-act="sel" data-id="' + x.id + '">' + esc(x.name) + '</button><span class="sep">/</span>'; }).join('') + '<span class="cur">' + esc(S.habits[view.id].name) + '</span>';
@@ -400,18 +403,161 @@
       + '<div class="ginfo" id="ginfo" hidden></div></div>';
   }
 
+  /* ---------- analytics ---------- */
+  function destroyCharts() {
+    chartInstances.forEach(function (ch) { try { ch.destroy(); } catch (e) {} });
+    chartInstances = [];
+  }
+
+  function analyticsColors() {
+    var cs = getComputedStyle(document.documentElement);
+    return [0,1,2,3,4,5,6,7].map(function (i) { return cs.getPropertyValue('--hab' + i).trim(); });
+  }
+
+  function makeChart(id, type, data, options) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var ch = new Chart(el, { type: type, data: data, options: options });
+    chartInstances.push(ch);
+    return ch;
+  }
+
+  function chartDefaults() {
+    var cs = getComputedStyle(document.documentElement);
+    var fg2 = cs.getPropertyValue('--fg2').trim();
+    var line = cs.getPropertyValue('--line').trim();
+    var fg = cs.getPropertyValue('--fg').trim();
+    return { fg: fg, fg2: fg2, line: line };
+  }
+
+  function viewAnalytics() {
+    var ids = leaves(ALL);
+    if (!ids.length) {
+      return '<div class="stack"><div class="card empty"><h2>No habits to analyse</h2><p class="muted" style="margin:0">Add some habits first, then come back here.</p><button class="btn pri" data-act="new">New habit</button></div></div>';
+    }
+
+    var html = '<div class="stack" id="analytics-stack">';
+    // Row 1: Bar (weekly) + Line (30-day trend)
+    html += '<div class="an-row">';
+    html += '<div class="card an-card"><div class="ch"><div><h2>Weekly Completions</h2><span class="sub">Done-days per habit over the last 8 weeks</span></div></div><div class="cb an-cb"><canvas id="an-bar"></canvas></div></div>';
+    html += '<div class="card an-card"><div class="ch"><div><h2>30-Day Completion Trend</h2><span class="sub">Daily overall completion rate (%)</span></div></div><div class="cb an-cb"><canvas id="an-line"></canvas></div></div>';
+    html += '</div>';
+    // Row 2: Doughnut + Radar + Polar
+    html += '<div class="an-row">';
+    html += '<div class="card an-card"><div class="ch"><div><h2>Today\'s Completion</h2><span class="sub">Done vs not-done habits</span></div></div><div class="cb an-cb an-sq"><canvas id="an-donut"></canvas></div></div>';
+    html += '<div class="card an-card"><div class="ch"><div><h2>Habit Performance</h2><span class="sub">Last-30d completion rate per habit</span></div></div><div class="cb an-cb an-sq"><canvas id="an-radar"></canvas></div></div>';
+    html += '<div class="card an-card"><div class="ch"><div><h2>All-Time Totals</h2><span class="sub">Total done-days per habit</span></div></div><div class="cb an-cb an-sq"><canvas id="an-polar"></canvas></div></div>';
+    html += '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function initAnalyticsCharts() {
+    if (typeof Chart === 'undefined') return;
+    destroyCharts();
+    var ids = leaves(ALL).filter(function (id) { return S.habits[id].created <= TODAY; });
+    if (!ids.length) return;
+    var colors = analyticsColors();
+    var d = chartDefaults();
+    var habColors = ids.map(function (id) { return colors[S.habits[id].hue % colors.length]; });
+
+    // ── Bar: weekly completions (last 8 weeks) ──
+    var weekLabels = [];
+    var weekDatasets = ids.map(function (id) { return { label: S.habits[id].name, data: [], backgroundColor: habColors[ids.indexOf(id)] + 'bb', borderColor: habColors[ids.indexOf(id)], borderWidth: 1, borderRadius: 4 }; });
+    for (var w = 7; w >= 0; w--) {
+      var wStart = TODAY - w * 7 - 6, wEnd = TODAY - w * 7;
+      var wDate = dnDate(wEnd);
+      weekLabels.push(MONTHS[wDate.getUTCMonth()] + ' ' + wDate.getUTCDate());
+      ids.forEach(function (id, i) {
+        var cnt = 0;
+        for (var dx = wStart; dx <= wEnd; dx++) { if (dayDone(id, dx)) cnt++; }
+        weekDatasets[i].data.push(cnt);
+      });
+    }
+    makeChart('an-bar', 'bar', { labels: weekLabels, datasets: weekDatasets }, {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: d.fg2, font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: d.fg2, font: { size: 11 } }, grid: { color: d.line } },
+        y: { ticks: { color: d.fg2, stepSize: 1, font: { size: 11 } }, grid: { color: d.line }, min: 0, max: 7 }
+      }
+    });
+
+    // ── Line: 30-day overall trend ──
+    var lineLabels = [], lineData = [];
+    for (var day = TODAY - 29; day <= TODAY; day++) {
+      var dd2 = dnDate(day);
+      lineLabels.push(MONTHS[dd2.getUTCMonth()] + ' ' + dd2.getUTCDate());
+      var done = ids.filter(function (id) { return dayDone(id, day); }).length;
+      lineData.push(ids.length ? Math.round(done / ids.length * 100) : 0);
+    }
+    makeChart('an-line', 'line', {
+      labels: lineLabels,
+      datasets: [{ label: 'Completion %', data: lineData, borderColor: colors[1], backgroundColor: colors[1] + '22', fill: true, tension: 0.35, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2 }]
+    }, {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: d.fg2, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: d.fg2, maxTicksLimit: 10, font: { size: 11 } }, grid: { color: d.line } },
+        y: { ticks: { color: d.fg2, callback: function (v) { return v + '%'; }, font: { size: 11 } }, grid: { color: d.line }, min: 0, max: 100 }
+      }
+    });
+
+    // ── Doughnut: today done/not-done ──
+    var todayDone = ids.filter(function (id) { return dayDone(id, TODAY); }).length;
+    var todayMiss = ids.length - todayDone;
+    makeChart('an-donut', 'doughnut', {
+      labels: ['Done', 'Remaining'],
+      datasets: [{ data: [todayDone, todayMiss], backgroundColor: [colors[0] + 'dd', d.line], borderWidth: 0, hoverOffset: 8 }]
+    }, {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: d.fg2, font: { size: 12 }, padding: 16 } },
+        tooltip: { callbacks: { label: function (ctx) { return ctx.label + ': ' + ctx.raw + ' habit' + (ctx.raw !== 1 ? 's' : ''); } } }
+      }
+    });
+
+    // ── Radar: last-30d per-habit rate ──
+    var radarLabels = ids.map(function (id) { return S.habits[id].name; });
+    var radarData = ids.map(function (id) { return Math.round(activeDays(id, 30) / 30 * 100); });
+    makeChart('an-radar', 'radar', {
+      labels: radarLabels,
+      datasets: [{ label: 'Completion %', data: radarData, borderColor: colors[2], backgroundColor: colors[2] + '33', pointBackgroundColor: colors[2], borderWidth: 2, pointRadius: 4 }]
+    }, {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: d.fg2, font: { size: 11 } } } },
+      scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 25, color: d.fg2, backdropColor: 'transparent', font: { size: 10 }, callback: function (v) { return v + '%'; } }, grid: { color: d.line }, pointLabels: { color: d.fg, font: { size: 11 } }, angleLines: { color: d.line } } }
+    });
+
+    // ── Polar Area: all-time totals ──
+    var polarData = ids.map(function (id) { var l = S.log[id] || {}; return Object.keys(l).length; });
+    makeChart('an-polar', 'polarArea', {
+      labels: ids.map(function (id) { return S.habits[id].name; }),
+      datasets: [{ data: polarData, backgroundColor: habColors.map(function (c) { return c + 'bb'; }), borderWidth: 0 }]
+    }, {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: d.fg2, font: { size: 11 }, boxWidth: 12 } } },
+      scales: { r: { ticks: { color: d.fg2, backdropColor: 'transparent', font: { size: 10 } }, grid: { color: d.line }, angleLines: { color: d.line } } }
+    });
+  }
+
   /* ---------- render ---------- */
   function render() {
     TODAY = todayNum();
     var key = view.kind + ':' + (view.id || '');
     var ct = $('#content'), st = key === lastKey ? ct.scrollTop : 0;
     if (view.kind !== 'graph') gStop();
+    if (view.kind !== 'analytics') destroyCharts();
     renderSide(); renderTop();
     ct.className = 'content' + (view.kind === 'graph' ? ' gv' : '');
-    ct.innerHTML = view.kind === 'graph' ? viewGraph() : view.kind === 'habit' ? viewHabit(view.id) : viewOverview();
+    if (view.kind === 'graph') ct.innerHTML = viewGraph();
+    else if (view.kind === 'analytics') ct.innerHTML = viewAnalytics();
+    else if (view.kind === 'habit') ct.innerHTML = viewHabit(view.id);
+    else ct.innerHTML = viewOverview();
     ct.scrollTop = st; lastKey = key;
     var hs = ct.querySelectorAll('[data-end]'); for (var i = 0; i < hs.length; i++) hs[i].scrollLeft = hs[i].scrollWidth;
     if (view.kind === 'graph' && $('#gcv')) gInit();
+    if (view.kind === 'analytics') setTimeout(initAnalyticsCharts, 0);
   }
 
   /* ---------- tooltip & day popover ---------- */

@@ -279,6 +279,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--blue); outl
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 80; background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; max-width: calc(100vw - 32px); }
 .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 25; }
 
+/* ── Analytics ── */
+.an-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 20px; }
+.an-card { display: flex; flex-direction: column; min-width: 0; }
+.an-cb { position: relative; height: 280px; padding: 16px; }
+.an-cb.an-sq { height: 300px; }
+.an-cb canvas { width: 100% !important; height: 100% !important; }
+
 /* ── Responsive ── */
 @media (max-width: 860px) {
   .app { grid-template-columns: minmax(0, 1fr); }
@@ -295,6 +302,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--blue); outl
   .tile:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .date { display: none; }
   .hhead h1 { font-size: 20px; }
+  .an-row { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
