@@ -25,6 +25,7 @@
   var view = { kind: 'overview', id: null };
   var lastKey = '';
   var chartInstances = [];
+  var calDate = TODAY; // currently selected calendar day (day number)
 
   /* ---------- theme ---------- */
   var LS_THEME = 'daylog.theme';
@@ -313,6 +314,7 @@
       + '<button class="nav' + (view.kind === 'overview' ? ' on' : '') + '" data-act="nav" data-v="overview"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>Overview</button>'
       + '<button class="nav' + (view.kind === 'graph' ? ' on' : '') + '" data-act="nav" data-v="graph"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="7" cy="12" r="2"/><path d="M5.6 5l4.7.3M5 5.8l1.5 4.4M10.8 6.7L8.2 10.4"/></svg>Graph</button>'
       + '<button class="nav' + (view.kind === 'analytics' ? ' on' : '') + '" data-act="nav" data-v="analytics"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="9" width="3" height="5" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg>Analytics</button>'
+      + '<button class="nav' + (view.kind === 'calendar' ? ' on' : '') + '" data-act="nav" data-v="calendar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1v4M11 1v4M2 7h12"/><rect x="5" y="10" width="2" height="2" rx=".5" fill="currentColor" stroke="none"/></svg>Calendar</button>'
       + '<div class="sect"><span>Habits &amp; skills</span><button class="ib" data-act="new" aria-label="New habit" title="New habit">+</button></div>'
       + '<div class="tree">' + (Object.keys(S.habits).length ? treeRows(null, 0) : '<p class="muted" style="padding:4px 8px;font-size:13px">No habits yet.</p>') + '</div>'
       + '<div class="foot" id="sync" data-s="' + syncState + '"><i></i><span></span></div>'
@@ -332,6 +334,7 @@
     if (view.kind === 'overview') t = '<span class="cur">Overview</span>';
     else if (view.kind === 'graph') t = '<span class="cur">Graph</span>';
     else if (view.kind === 'analytics') t = '<span class="cur">Analytics</span>';
+    else if (view.kind === 'calendar') t = '<span class="cur">Calendar</span>';
     else {
       var p = pathOf(view.id);
       t = p.map(function (x) { return '<button data-act="sel" data-id="' + x.id + '">' + esc(x.name) + '</button><span class="sep">/</span>'; }).join('') + '<span class="cur">' + esc(S.habits[view.id].name) + '</span>';
@@ -451,6 +454,210 @@
       + '<div class="gpanel"><label><input type="checkbox" data-g="labels"' + (G.labels ? ' checked' : '') + '> Labels</label><label><input type="checkbox" data-g="links"' + (G.links ? ' checked' : '') + '> Cross-links</label><button class="btn sm" data-act="gfit">Fit view</button></div>'
       + '<div class="gzoom"><button data-act="gzin" aria-label="Zoom in">+</button><button data-act="gzout" aria-label="Zoom out">−</button></div>'
       + '<div class="ginfo" id="ginfo" hidden></div></div>';
+  }
+
+  /* ---------- calendar ---------- */
+  var calViewYear = null, calViewMonth = null;
+
+  function calDnNum(y, m, day) {
+    // day-number for a given calendar date (UTC)
+    return Math.floor(Date.UTC(y, m, day) / DAY);
+  }
+
+  function viewCalendar() {
+    var ids = leaves(ALL);
+    var now = dnDate(calDate);
+    if (calViewYear === null) { calViewYear = now.getUTCFullYear(); calViewMonth = now.getUTCMonth(); }
+    var y = calViewYear, m = calViewMonth;
+    var firstDay = new Date(Date.UTC(y, m, 1)).getUTCDay(); // 0=Sun
+    var daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+
+    // Day-of-week header (single letter)
+    var DOW = ['S','M','T','W','T','F','S'];
+    var cells = '';
+    DOW.forEach(function(d) { cells += '<div class="cal-dow">' + d + '</div>'; });
+    for (var bl = 0; bl < firstDay; bl++) cells += '<div></div>';
+
+    for (var dd = 1; dd <= daysInMonth; dd++) {
+      var dn = calDnNum(y, m, dd);
+      var isFuture = dn > TODAY;
+      var ls = isFuture ? [] : ids.filter(function(id) { return S.habits[id].created <= dn; });
+      var done = ls.filter(function(id) { return dayDone(id, dn); }).length;
+      var pct  = ls.length ? done / ls.length : 0;
+      var dotCls = ls.length === 0 ? '' : pct >= 1 ? ' pip-full' : pct >= 0.5 ? ' pip-half' : ' pip-low';
+      var cls = 'cal-cell' + (isFuture ? ' future' : '') + (dn === TODAY ? ' tod' : '') + (dn === calDate ? ' sel' : '');
+      if (isFuture) {
+        cells += '<div class="' + cls + '"><span>' + dd + '</span></div>';
+      } else {
+        cells += '<div class="' + cls + '" data-act="calday" data-dn="' + dn + '">' +
+                   '<span>' + dd + '</span>' +
+                   (ls.length ? '<i class="cal-pip' + dotCls + '"></i>' : '') +
+                 '</div>';
+      }
+    }
+
+    var monthName = MONTHS[m] + ' ' + y;
+    var selIds = ids.filter(function(id) { return S.habits[id].created <= calDate; });
+    var doneCnt = selIds.filter(function(id) { return dayDone(id, calDate); }).length;
+    var overallPct = selIds.length ? Math.round(doneCnt / selIds.length * 100) : 0;
+
+    // SVG ring (circumference = 2π×18 ≈ 113)
+    var circ = 113;
+    var fill = Math.round(overallPct * circ / 100);
+    var ringEl = '<svg class="cal-ring" width="48" height="48" viewBox="0 0 48 48">' +
+      '<circle cx="24" cy="24" r="18" fill="none" stroke="var(--line2)" stroke-width="3"/>' +
+      '<circle cx="24" cy="24" r="18" fill="none" stroke="var(--hab0)" stroke-width="3"' +
+      ' stroke-dasharray="' + fill + ' ' + circ + '"' +
+      ' stroke-dashoffset="28.25" stroke-linecap="round"/>' +
+      '</svg><span class="cal-ring-val">' + overallPct + '%</span>';
+
+    var selD = dnDate(calDate);
+    var syncLabel = ({
+      local:  'Saved locally — sign in to sync',
+      saving: 'Saving…',
+      cloud:  '✓ Synced with cloud',
+      error:  '⚠ Sync error'
+    })[syncState] || 'local';
+
+    var html = '<div class="cal-layout">';
+
+    // ── LEFT PANEL: mini calendar ──────────────────────────────────────────
+    html += '<div class="cal-panel">';
+
+    // Month nav
+    html += '<div class="cal-nav2">' +
+      '<button class="cal-nav-btn" data-act="calprev" aria-label="Prev month">' +
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 3L6 8l4 5"/></svg>' +
+      '</button>' +
+      '<span class="cal-month-label">' + monthName + '</span>' +
+      '<button class="cal-nav-btn" data-act="calnext" aria-label="Next month">' +
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 3l4 5-4 5"/></svg>' +
+      '</button>' +
+    '</div>';
+
+    // Grid
+    html += '<div class="cal-grid">' + cells + '</div>';
+
+    // Today button
+    html += '<div class="cal-today-row"><button class="cal-today-btn" data-act="caltoday">Today</button></div>';
+
+    // Completion legend
+    html += '<div class="cal-leg-row">' +
+      '<i class="cal-pip pip-low" style="position:static;transform:none;flex:none"></i><span>Low</span>' +
+      '<i class="cal-pip pip-half" style="position:static;transform:none;flex:none"></i><span>Half</span>' +
+      '<i class="cal-pip pip-full" style="position:static;transform:none;flex:none"></i><span>Done</span>' +
+    '</div>';
+
+    html += '</div>'; // end cal-panel
+
+    // ── RIGHT PANEL: selected-date detail ────────────────────────────────
+    html += '<div class="cal-detail-panel">';
+
+    // Date heading row
+    html += '<div class="cal-detail-hdr">';
+    html += '<div class="cal-detail-date">' +
+      '<div class="cal-big-day">' + selD.getUTCDate() + '</div>' +
+      '<div class="cal-date-meta">' +
+        '<span class="cal-dow-name">' + DOWN[selD.getUTCDay()].toUpperCase() + '</span>' +
+        '<span class="cal-month-name">' + MONTHS[selD.getUTCMonth()] + ' ' + selD.getUTCFullYear() + '</span>' +
+      '</div>' +
+    '</div>';
+    if (selIds.length) {
+      html += '<div class="cal-ring-wrap">' + ringEl + '</div>';
+    }
+    html += '</div>'; // end hdr
+
+    // Sync status strip
+    html += '<div class="cal-sync-strip" data-s="' + syncState + '">' +
+      '<span class="cal-sync-dot" data-s="' + syncState + '"></span>' +
+      '<span class="cal-sync-txt">' + syncLabel + '</span>' +
+      (selIds.length ? '<span class="cal-edit-tip">— click a row to edit</span>' : '') +
+    '</div>';
+
+    if (!selIds.length) {
+      html += '<div class="cal-empty-state">' +
+        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--fg3)" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">' +
+          '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>' +
+        '</svg>' +
+        '<p>No habits on this date</p>' +
+      '</div>';
+    } else {
+      // Habit rows — carry data-d + data-id so click opens the edit popover → DB save
+      html += '<div class="cal-habit-rows">';
+      selIds.forEach(function(id) {
+        var h = S.habits[id], a = amount(id, calDate), done2 = dayDone(id, calDate);
+        var c = colorOf(id);
+        var pct2 = Math.min(100, Math.round(lratio(id, calDate) * 100));
+        var isQuant = h.goal > 1 || h.unit;
+        html += '<div class="cal-hab-row' + (done2 ? ' done' : '') + '" data-d="' + calDate + '" data-id="' + id + '" title="Click to edit">';
+        html += '<div class="cal-check" style="--c:' + c + '">' +
+          (done2 ? '<svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 5.5l2 2L8.5 2"/></svg>' : '') +
+        '</div>';
+        html += '<div class="cal-hab-info">' +
+          '<span class="cal-hab-name">' + esc(h.name) + '</span>' +
+          (isQuant ? '<span class="cal-hab-sub">' + fmt(a) + ' / ' + fmt(h.goal) + (h.unit ? ' ' + esc(h.unit) : '') + '</span>' : '') +
+        '</div>';
+        if (isQuant) {
+          html += '<div class="cal-hab-track"><div class="cal-hab-fill" style="width:' + pct2 + '%;background:' + c + '"></div></div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+
+      // Analytics charts
+      var barH = Math.max(220, selIds.length * 40);
+      html += '<div class="cal-analytics">';
+      html += '<div class="cal-an-hdr">Day Analytics</div>';
+      html += '<div class="cal-an-body">';
+      html += '<div class="cal-donut-wrap"><canvas id="cal-donut"></canvas></div>';
+      html += '<div class="cal-bar-wrap" style="height:' + barH + 'px"><canvas id="cal-bar"></canvas></div>';
+      html += '</div>';
+      html += '</div>';
+    }
+
+    html += '</div>'; // end detail-panel
+    html += '</div>'; // end cal-layout
+    return html;
+  }
+
+  function initCalendarCharts() {
+    if (typeof Chart === 'undefined') return;
+    destroyCharts();
+    var ids = leaves(ALL).filter(function (id) { return S.habits[id].created <= calDate; });
+    if (!ids.length) return;
+    var colors = analyticsColors();
+    var d = chartDefaults();
+    var habColors = ids.map(function (id) { return colors[S.habits[id].hue % colors.length]; });
+
+    // Doughnut: done vs remaining
+    var doneCnt = ids.filter(function (id) { return dayDone(id, calDate); }).length;
+    var missCnt = ids.length - doneCnt;
+    makeChart('cal-donut', 'doughnut', {
+      labels: ['Done', 'Remaining'],
+      datasets: [{ data: [doneCnt, missCnt], backgroundColor: [colors[0] + 'dd', d.line], borderWidth: 0, hoverOffset: 8 }]
+    }, {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: d.fg2, font: { size: 12 }, padding: 16 } },
+        tooltip: { callbacks: { label: function (ctx) { return ctx.label + ': ' + ctx.raw + ' habit' + (ctx.raw !== 1 ? 's' : ''); } } }
+      }
+    });
+
+    // Horizontal bar: per-habit completion %
+    var barLabels = ids.map(function (id) { return S.habits[id].name; });
+    var barData = ids.map(function (id) { return Math.round(lratio(id, calDate) * 100); });
+    makeChart('cal-bar', 'bar', {
+      labels: barLabels,
+      datasets: [{ label: 'Completion %', data: barData, backgroundColor: habColors.map(function (c) { return c + 'cc'; }), borderRadius: 4, borderWidth: 0 }]
+    }, {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { min: 0, max: 100, ticks: { color: d.fg2, callback: function (v) { return v + '%'; }, font: { size: 11 } }, grid: { color: d.line } },
+        y: { ticks: { color: d.fg2, font: { size: 11 } }, grid: { color: d.line } }
+      }
+    });
   }
 
   /* ---------- analytics ---------- */
@@ -594,20 +801,22 @@
   /* ---------- render ---------- */
   function render() {
     TODAY = todayNum();
-    var key = view.kind + ':' + (view.id || '');
+    var key = view.kind + ':' + (view.id || '') + ':' + (view.kind === 'calendar' ? calDate + '_' + calViewYear + '_' + calViewMonth : '');
     var ct = $('#content'), st = key === lastKey ? ct.scrollTop : 0;
     if (view.kind !== 'graph') gStop();
-    if (view.kind !== 'analytics') destroyCharts();
+    if (view.kind !== 'analytics' && view.kind !== 'calendar') destroyCharts();
     renderSide(); renderTop();
     ct.className = 'content' + (view.kind === 'graph' ? ' gv' : '');
     if (view.kind === 'graph') ct.innerHTML = viewGraph();
     else if (view.kind === 'analytics') ct.innerHTML = viewAnalytics();
+    else if (view.kind === 'calendar') ct.innerHTML = viewCalendar();
     else if (view.kind === 'habit') ct.innerHTML = viewHabit(view.id);
     else ct.innerHTML = viewOverview();
     ct.scrollTop = st; lastKey = key;
     var hs = ct.querySelectorAll('[data-end]'); for (var i = 0; i < hs.length; i++) hs[i].scrollLeft = hs[i].scrollWidth;
     if (view.kind === 'graph' && $('#gcv')) gInit();
     if (view.kind === 'analytics') setTimeout(initAnalyticsCharts, 0);
+    if (view.kind === 'calendar') setTimeout(initCalendarCharts, 0);
   }
 
   /* ---------- tooltip & day popover ---------- */
@@ -901,6 +1110,24 @@
     var a = el.getAttribute('data-act'), id = el.getAttribute('data-id');
     switch (a) {
       case 'nav': go({ kind: el.getAttribute('data-v'), id: null }); break;
+      case 'calday': {
+        var dn = Number(el.getAttribute('data-dn'));
+        calDate = dn; lastKey = ''; render(); break;
+      }
+      case 'calprev': {
+        calViewMonth--; if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; } lastKey = ''; render(); break;
+      }
+      case 'calnext': {
+        var nextM = calViewMonth + 1, nextY = calViewYear;
+        if (nextM > 11) { nextM = 0; nextY++; }
+        if (calDnNum(nextY, nextM, 1) <= TODAY) { calViewMonth = nextM; calViewYear = nextY; lastKey = ''; render(); }
+        break;
+      }
+      case 'caltoday': {
+        calDate = TODAY;
+        var td = dnDate(TODAY); calViewYear = td.getUTCFullYear(); calViewMonth = td.getUTCMonth();
+        lastKey = ''; render(); break;
+      }
       case 'sel': go({ kind: 'habit', id: id }); break;
       case 'fold': S.habits[id].collapsed = !S.habits[id].collapsed; persist(); renderSide(); break;
       case 'new': closeSide(); openForm(null, null); break;
