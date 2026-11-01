@@ -209,8 +209,8 @@
     fetch('/api/auth/me', { credentials: 'include' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('no session'); })
       .then(function (me) {
-        // Authenticated — capture username and load cloud data
-        profileUser = me && (me.username || me.email || me.name) ? (me.username || me.name || me.email) : null;
+        // Authenticated — keep the user object from /api/auth/me ({ user }) and load cloud data
+        profileUser = me && me.user ? me.user : null;
         renderSide();
         return fetch('/api/data', { credentials: 'include' });
       })
