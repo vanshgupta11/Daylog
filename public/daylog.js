@@ -526,23 +526,17 @@
     var doneCnt = selIds.filter(function(id) { return dayDone(id, calDate); }).length;
     var overallPct = selIds.length ? Math.round(doneCnt / selIds.length * 100) : 0;
 
-    // SVG ring (circumference = 2π×18 ≈ 113)
-    var circ = 113;
-    var fill = Math.round(overallPct * circ / 100);
+    // Ring: pathLength=100 maps the arc directly to the percentage (SVG rotated -90deg in CSS)
+    var arcEl = overallPct > 0
+      ? '<circle cx="24" cy="24" r="18" fill="none" stroke="var(--hab0)" stroke-width="3"' +
+        ' pathLength="100" stroke-dasharray="' + overallPct + ' 100" stroke-linecap="round"/>'
+      : '';
     var ringEl = '<svg class="cal-ring" width="48" height="48" viewBox="0 0 48 48">' +
       '<circle cx="24" cy="24" r="18" fill="none" stroke="var(--line2)" stroke-width="3"/>' +
-      '<circle cx="24" cy="24" r="18" fill="none" stroke="var(--hab0)" stroke-width="3"' +
-      ' stroke-dasharray="' + fill + ' ' + circ + '"' +
-      ' stroke-dashoffset="28.25" stroke-linecap="round"/>' +
+      arcEl +
       '</svg><span class="cal-ring-val">' + overallPct + '%</span>';
 
     var selD = dnDate(calDate);
-    var syncLabel = ({
-      local:  'Saved locally — sign in to sync',
-      saving: 'Saving…',
-      cloud:  '✓ Synced with cloud',
-      error:  '⚠ Sync error'
-    })[syncState] || 'local';
 
     var html = '<div class="cal-layout">';
 
@@ -591,13 +585,6 @@
       html += '<div class="cal-ring-wrap">' + ringEl + '</div>';
     }
     html += '</div>'; // end hdr
-
-    // Sync status strip
-    html += '<div class="cal-sync-strip" data-s="' + syncState + '">' +
-      '<span class="cal-sync-dot" data-s="' + syncState + '"></span>' +
-      '<span class="cal-sync-txt">' + syncLabel + '</span>' +
-      (selIds.length ? '<span class="cal-edit-tip">— click a row to edit</span>' : '') +
-    '</div>';
 
     if (!selIds.length) {
       html += '<div class="cal-empty-state">' +
