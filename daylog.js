@@ -126,7 +126,7 @@
   function setSync(s) {
     syncState = s; var f = $('#sync'); if (f) {
       f.setAttribute('data-s', s);
-      f.lastChild.textContent = ({ local: 'Saved in this browser', saving: 'Saving…', cloud: 'Synced to your account', error: 'Sync failed, kept in this browser' })[s];
+      f.lastChild.textContent = ({ local: 'Saved in this browser', saving: 'Saving…', error: 'Sync failed, kept in this browser' })[s];
     }
   }
   function persist() {

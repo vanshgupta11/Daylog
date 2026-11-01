@@ -95,11 +95,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; text-wrap: balance; }
 .trow .add { opacity: 0; }
 .trow:hover .add, .trow .add:focus-visible { opacity: 1; }
 @media (hover: none) { .trow .add { opacity: 1; } }
-.foot { padding: 10px 8px 0; border-top: 1px solid var(--line); margin-top: 8px; font-family: var(--mono); font-size: 11px; color: var(--fg3); display: flex; align-items: center; gap: 8px; }
-.foot i { width: 6px; height: 6px; border-radius: 50%; background: var(--fg3); flex: none; }
-.foot[data-s="cloud"] i { background: var(--hab0); }
-.foot[data-s="saving"] i { background: var(--hab4); }
-.foot[data-s="error"] i { background: var(--red); }
+.foot { display: none; }
 
 /* ── Main panel ── */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }

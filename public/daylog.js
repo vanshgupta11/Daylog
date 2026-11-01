@@ -22,10 +22,21 @@
 
   /* ---------- state ---------- */
   var S = null, CH = {}, LV = {};
+  var profileUser = null; // set by connect() from /api/auth/me
   var view = { kind: 'overview', id: null };
   var lastKey = '';
   var chartInstances = [];
   var calDate = TODAY; // currently selected calendar day (day number)
+
+  // ── postMessage bridge: receive auth from React parent ──────────────────
+  window.addEventListener('message', function(e) {
+    if (e.origin !== window.location.origin) return;
+    if (e.data && e.data.type === 'daylog:auth') {
+      profileUser = e.data.user || null;
+      renderSide();
+    }
+  });
+
 
   /* ---------- theme ---------- */
   var LS_THEME = 'daylog.theme';
@@ -162,7 +173,7 @@
   function setSync(s) {
     syncState = s; var f = $('#sync'); if (f) {
       f.setAttribute('data-s', s);
-      f.lastChild.textContent = ({ local: 'Saved in this browser', saving: 'Saving…', cloud: 'Synced to your account', error: 'Sync failed, kept in this browser' })[s];
+      f.lastChild.textContent = ({ local: 'Saved in this browser', saving: 'Saving…', error: 'Sync failed, kept in this browser' })[s];
     }
   }
   function persist() {
@@ -197,8 +208,10 @@
     // Connect to our REST backend using the JWT cookie set by the auth app
     fetch('/api/auth/me', { credentials: 'include' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('no session'); })
-      .then(function () {
-        // Authenticated — load cloud data
+      .then(function (me) {
+        // Authenticated — capture username and load cloud data
+        profileUser = me && (me.username || me.email || me.name) ? (me.username || me.name || me.email) : null;
+        renderSide();
         return fetch('/api/data', { credentials: 'include' });
       })
       .then(function (r) { return r.ok ? r.json() : Promise.reject('load failed'); })
@@ -319,8 +332,20 @@
       + '<div class="tree">' + (Object.keys(S.habits).length ? treeRows(null, 0) : '<p class="muted" style="padding:4px 8px;font-size:13px">No habits yet.</p>') + '</div>'
       + '<div class="foot" id="sync" data-s="' + syncState + '"><i></i><span></span></div>'
       + '<div class="profile">'
-      + '<div class="profile-avatar" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="5.5" r="2.5"/><path d="M2.5 13.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg></div>'
-      + '<div class="profile-info"><div class="pi-name">You</div><div class="pi-sub">Local account</div></div>'
+      + (function() {
+        var u = profileUser;
+        var initials = u && u.name ? u.name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2) : (u && u.email ? u.email.slice(0,2).toUpperCase() : '?');
+        var avatar = u
+          ? '<div class="pi-avatar" aria-hidden="true">' + initials + '</div>'
+          : '<div class="pi-avatar pi-avatar-guest" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="5.5" r="2.5"/><path d="M2.5 13.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg></div>';
+        var info = u
+          ? '<div class="pi-name">' + esc(u.name || u.email || 'Daylog User') + '</div><div class="pi-sub">' + esc(u.email || '') + '</div>'
+          : '<div class="pi-name">Guest</div><div class="pi-sub"><a href="/index.html" style="color:var(--blue);text-decoration:none">Sign in to sync</a></div>';
+        var signout = u
+          ? '<button class="pi-signout" data-act="signout" title="Sign out" aria-label="Sign out"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>'
+          : '';
+        return avatar + '<div class="profile-info">' + info + '</div>' + signout;
+      }())
       + '<button id="theme-toggle" class="theme-toggle" data-act="theme" aria-label="Toggle theme" title="Toggle light / dark" aria-pressed="' + (resolvedTheme() === 'dark' ? 'true' : 'false') + '">'
       + '<span class="tt-track">'
       + '<span class="tt-sun"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M11.4 4.6l-1.4 1.4M4.6 11.4l-1.4 1.4"/></svg></span>'
@@ -342,7 +367,7 @@
     var dd = dnDate(TODAY);
     $('#top').innerHTML = '<button class="btn ghost menu" data-act="menu" aria-label="Open habit list"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg></button>'
       + '<div class="crumb">' + t + '</div><span class="date">' + DOWN[dd.getUTCDay()] + ' ' + dd.getUTCDate() + ' ' + MONTHS[dd.getUTCMonth()] + ' ' + dd.getUTCFullYear() + '</span>'
-      + '<button class="btn pri" data-act="new">New habit</button>';
+      + '';
   }
 
   /* ---------- views ---------- */
@@ -1145,6 +1170,12 @@
       case 'link': { var sel = $('#linksel'); if (sel && sel.value) { S.habits[id].links.push(sel.value); commit(); } break; }
       case 'unlink': { var to = el.getAttribute('data-to'); S.habits[id].links = S.habits[id].links.filter(function (x) { return x !== to; }); S.habits[to].links = S.habits[to].links.filter(function (x) { return x !== id; }); commit(); break; }
       case 'keep': S.sample = false; commit(); break;
+      case 'signout': {
+        if (window.confirm('Sign out of Daylog?')) {
+          window.parent.postMessage({ type: 'daylog:logout' }, window.location.origin);
+        }
+        break;
+      }
       case 'fresh': S = blankState(); view = { kind: 'overview', id: null }; G.pos = {}; G.settled = false; G.sel = null; commit(); break;
       case 'fcancel': closeForm(); break;
       case 'fdel': { var mf = document.querySelector('.mf>div'); mf.innerHTML = '<span class="muted" style="font-size:13px">Delete this habit? Sub-skills move up one level.</span> <button type="button" class="btn dng sm" data-act="fdelok">Yes, delete</button>'; break; }

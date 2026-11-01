@@ -108,11 +108,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; text-wrap: balance; }
 .trow .add { opacity: 0; }
 .trow:hover .add, .trow .add:focus-visible { opacity: 1; }
 @media (hover: none) { .trow .add { opacity: 1; } }
-.foot { padding: 10px 8px 0; border-top: 1px solid var(--line); margin-top: 8px; font-family: var(--mono); font-size: 11px; color: var(--fg3); display: flex; align-items: center; gap: 8px; }
-.foot i { width: 6px; height: 6px; border-radius: 50%; background: var(--fg3); flex: none; }
-.foot[data-s="cloud"] i { background: var(--hab0); }
-.foot[data-s="saving"] i { background: var(--hab4); }
-.foot[data-s="error"] i { background: var(--red); }
+.foot { display: none; }
 
 /* ── Profile / Theme section ── */
 .profile {
@@ -123,18 +119,40 @@ h1, h2, h3 { margin: 0; font-weight: 600; text-wrap: balance; }
   align-items: center;
   gap: 10px;
 }
-.profile-avatar {
+
+/* Initials avatar — gradient circle when logged in */
+.pi-avatar {
   flex: none;
   width: 30px; height: 30px;
   border-radius: 50%;
+  background: linear-gradient(135deg, #7c6cff, #a78bfa);
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+  letter-spacing: .03em;
+  user-select: none;
+}
+.pi-avatar-guest {
   background: var(--bg3);
   border: 1px solid var(--line2);
-  display: grid; place-items: center;
   color: var(--fg2);
 }
+
 .profile-info { flex: 1; min-width: 0; }
 .profile-info .pi-name { font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.profile-info .pi-sub  { font-size: 11px; color: var(--fg3); font-family: var(--mono); }
+.profile-info .pi-sub  { font-size: 11px; color: var(--fg3); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Sign-out icon button */
+.pi-signout {
+  flex: none;
+  width: 26px; height: 26px;
+  border: 0; background: none;
+  border-radius: 6px;
+  color: var(--fg3);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: background .1s, color .1s;
+}
+.pi-signout:hover { background: var(--bg3); color: var(--red); }
 
 /* Theme toggle pill */
 .theme-toggle {
@@ -180,7 +198,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; text-wrap: balance; }
   flex: none; display: flex; align-items: center; gap: 12px; min-height: 56px;
   border-bottom: 1px solid var(--line); padding-block: 10px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: calc(max(16px, env(safe-area-inset-right, 0px)) + 120px);
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: var(--bg);
 }
 .top .menu { display: none; }
