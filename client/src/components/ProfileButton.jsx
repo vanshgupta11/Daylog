@@ -41,7 +41,7 @@ export default function ProfileButton() {
         />
       )}
 
-      {/* Floating profile trigger button */}
+      {/* Sidebar-bottom profile row */}
       <button
         type="button"
         className={`profile-trigger-btn${open ? ' active' : ''}`}
@@ -52,7 +52,10 @@ export default function ProfileButton() {
         title={`${user.name || user.email} — Profile`}
       >
         <div className="profile-avatar" aria-hidden="true">{initials}</div>
-        <span className="profile-trigger-name">{user.name ? user.name.split(' ')[0] : 'Profile'}</span>
+        <div className="profile-trigger-info">
+          <span className="profile-trigger-name">{user.name || 'Daylog User'}</span>
+          <span className="profile-trigger-email">{user.email}</span>
+        </div>
         <svg
           className={`profile-chevron${open ? ' rotated' : ''}`}
           width="12"

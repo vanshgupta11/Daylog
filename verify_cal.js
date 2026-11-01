@@ -1,0 +1,10 @@
+const fs = require('fs');
+const c = fs.readFileSync('public/daylog.js', 'utf8');
+const start = c.indexOf('function viewCalendar');
+const seg = c.slice(start, start + 6000);
+const syncIdx = seg.indexOf('cal-sync-bar');
+const rowIdx  = seg.indexOf('data-d=');
+console.log('sync-bar ctx:', JSON.stringify(seg.slice(syncIdx, syncIdx + 180)));
+console.log('cal-row ctx:',  JSON.stringify(seg.slice(rowIdx,   rowIdx  + 120)));
+const hasEscapedClass = seg.indexOf('\\\\\"cal-sync') !== -1;
+console.log('Leftover double-escapes:', hasEscapedClass);
